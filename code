@@ -1,0 +1,25 @@
+#import dataset
+car_data <- read.csv("/Users/Kyra/Desktop/cardata.csv")
+
+#create a new column and select the word(s) you are searching for in the string
+#In this example, I'm searching for 'Heated Seats' in the 'options' column
+car_data$heatedseats <- ifelse(grepl("Heated Seats", car_data$options), "yes", "no")
+
+#You can also opt for a numeric dichotomy like '1' or '0' rather than 'yes' or 'no'
+car_data$heatedseats <- ifelse(grepl("Heated Seats", car_data$options), "1", "0")
+#Be sure to modify the structure of the column from character to integer!
+car_data$heatedseats <- as.integer(car_data$heatedseats)
+
+#a few more examples
+car_data$bluetooth <- ifelse(grepl("Bluetooth", car_data$options), "1", "0")
+car_data$backupcamera <- ifelse(grepl("Backup Camera", car_data$options), "1", "0")
+
+car_data$bluetooth <- as.integer(car_data$bluetooth)
+car_data$backupcamera <- as.integer(car_data$backupcamera)
+
+#use the Summary Tools library to see the results of your search
+library(summarytools)
+print(dfSummary(car_data$heatedseats, graph.magnif = 0.75), method = 'render')
+print(dfSummary(car_data$bluetooth, graph.magnif = 0.75), method = 'render')
+print(dfSummary(car_data$backupcamera, graph.magnif = 0.75), method = 'render')
+
