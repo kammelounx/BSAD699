@@ -32,5 +32,7 @@ Lastly, to check the results of your added columns, you can use the ‘Summary T
 
 library(summarytools)
 print(dfSummary(car_data$heatedseats, graph.magnif = 0.75), method = 'render')
+
 print(dfSummary(car_data$bluetooth, graph.magnif = 0.75), method = 'render')
+
 print(dfSummary(car_data$backupcamera, graph.magnif = 0.75), method = 'render')
