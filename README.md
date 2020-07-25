@@ -6,7 +6,9 @@
 
 #### It only takes one line of code in R to create a new column with this categorical information. In the example of car inventory data, I wanted to create a column that would designate whether or not a car had heated seats. I did just that, and was then able to determine how much (or little) heated seats contributed to the car’s price, against the other specifications. I created additional columns for the availability of Bluetooth and a backup camera, as these were crucial features in my own car search several years ago. 
 
-### Now, for the code. You will first need to import your dataset and give it a name. 
+### Now, for the code! 
+
+#### You will first need to import your dataset and give it a name. 
 
 car_data <- read.csv("/Users/Kyra/Desktop/cardata.csv")
 
