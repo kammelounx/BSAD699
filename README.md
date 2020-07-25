@@ -1,4 +1,4 @@
-# Creating categorical variables from a string in one line of code
+# Creating categorical variables from a string using one line of code
 
 #### One of the more difficult tasks of cleaning data can be figuring out what to do when you have a column made up of a long string of attributes. This string can be the description of the object written by someone looking at the object. While this column can be daunting, it can present incredibly valuable information to your analysis, as the data may not have been captured in the other available columns and can bring further analytical details.
 
