@@ -1,0 +1,252 @@
+---
+title: "Munich Airbnbs"
+author: "Kyra Ammelounx"
+date: "7/31/2020"
+output: html_document
+---
+
+## Analysis of Airbnbs in Munich, Germany
+
+I first read in the csv file downloaded from Kaggle: [link]https://www.kaggle.com/chriskue/munich-airbnb-data. Since the dataset came with 106 variables, I only selected the twelve I felt were most important and named it "MunichAirbnb". From "MunichAirbnb", I removed all rows that had a blank variable or NA and named the new dataset "MunichAirbnbClean". Only 65 rows were removed in this step, bringing the number of records down to 11,416 from 11,481.
+
+```{r}
+Munich <- read.csv("/Users/Kyra/Desktop/listings.csv")
+MunichAirbnb <- subset(Munich, select=c("neighbourhood", "room_type", "accommodates", "bathrooms", "bedrooms", "beds", "bed_type", "amenities", "price", "minimum_nights", "availability_365", "number_of_reviews"))
+
+MunichAirbnb[MunichAirbnb == ""] <- NA
+MunichAirbnb[MunichAirbnb == "NA"] <- NA
+MunichAirbnbClean <- MunichAirbnb[complete.cases(MunichAirbnb), ]
+```
+
+Next, I modified the "price" column from factor to numeric. I also created a new variable that tranformed "room_type" into a numeric factor variable so that it could be used in a corrplot. 
+
+```{r}
+MunichAirbnbClean$price <- as.numeric(MunichAirbnbClean$price)
+MunichAirbnbClean$room_type_numeric <- as.numeric(MunichAirbnbClean$room_type)
+```
+
+This next step was the one that required a considerable amount of work. I used Tableau to visualize the different amenities and how common they were among the Airbnb listings. With the grepl function, you also need to be sure you type the string exactly as it appears. 
+
+I created nine new dichotomous variables that distinguish whether or not an Airbnb has a certain amenity. These new variables then had to be transformed to factor variables from character in order for the Random Forest algorithms to work.
+
+```{r}
+MunichAirbnbClean$Balcony <- ifelse(grepl("balcony", MunichAirbnbClean$amenities), "yes", "no")
+MunichAirbnbClean$AC <- ifelse(grepl("Air conditioning", MunichAirbnbClean$amenities), "yes", "no")
+MunichAirbnbClean$Wifi <- ifelse(grepl("Wifi", MunichAirbnbClean$amenities), "yes", "no")
+MunichAirbnbClean$Kitchen <- ifelse(grepl("Kitchen", MunichAirbnbClean$amenities), "yes", "no")
+MunichAirbnbClean$Family <- ifelse(grepl("Family", MunichAirbnbClean$amenities), "yes", "no")
+MunichAirbnbClean$Washer <- ifelse(grepl("washer", MunichAirbnbClean$amenities), "yes", "no")
+MunichAirbnbClean$Iron <- ifelse(grepl("Iron", MunichAirbnbClean$amenities), "yes", "no")
+MunichAirbnbClean$CoffeeMaker <- ifelse(grepl("Coffee", MunichAirbnbClean$amenities), "yes", "no")
+MunichAirbnbClean$TwentyFourHrCheckIn <- ifelse(grepl("24", MunichAirbnbClean$amenities), "yes", "no")
+
+MunichAirbnbClean$Balcony <- as.factor(MunichAirbnbClean$Balcony)
+MunichAirbnbClean$AC <- as.factor(MunichAirbnbClean$AC)
+MunichAirbnbClean$Wifi <- as.factor(MunichAirbnbClean$Wifi)
+MunichAirbnbClean$Kitchen <- as.factor(MunichAirbnbClean$Kitchen)
+MunichAirbnbClean$Family <- as.factor(MunichAirbnbClean$Family)
+MunichAirbnbClean$Washer <- as.factor(MunichAirbnbClean$Washer)
+MunichAirbnbClean$Iron <- as.factor(MunichAirbnbClean$Iron)
+MunichAirbnbClean$CoffeeMaker <- as.factor(MunichAirbnbClean$CoffeeMaker)
+MunichAirbnbClean$TwentyFourHrCheckIn <- as.factor(MunichAirbnbClean$TwentyFourHrCheckIn)
+```
+
+Here is a summary of the data. 
+
+```{r}
+library(summarytools)
+print(dfSummary(MunichAirbnbClean, graph.magnif = 0.75), method = 'render')
+```
+
+Below is a visualization of "room_type" and "price". This is just a glimpse of the overall picture. 
+
+```{r}
+library(tidyverse)
+
+ggplot(MunichAirbnbClean, aes(x = room_type, y = price)) +
+  geom_boxplot(aes(fill = room_type)) + scale_y_log10() +
+  xlab("Room Type") + 
+  ylab("Price") +
+  ggtitle("Boxplot of Price by Room Type") +
+  geom_hline(yintercept = mean(MunichAirbnbClean$price), color = "purple", linetype = 2)
+```
+
+### Corrplot 
+
+I created a corrplot of all the numeric variables in the "MunichAirbnbClean" dataset to see if there is any correlation when compared to price. Based on this, it appears there is no significant correlation to any of these variables, and the only interaction is in the number of bedrooms, bathrooms, and number of guests the Airbnb can accommodate. 
+
+```{r}
+#install.packages("corrplot")
+library(corrplot)
+
+Munich.cor <- cor(MunichAirbnbClean[,c("price", "accommodates", "bathrooms", "bedrooms", "beds", "availability_365", "minimum_nights","number_of_reviews","room_type_numeric")])
+corrplot(Munich.cor,
+         method = "square",
+         addCoef.col = "black",
+         number.cex = 0.75,
+         type = "upper",
+         diag = FALSE)
+```
+
+### Splitting the Data
+
+In order to continue with the analysis, I created one last subset of the data and split it into train and test with a 70/30 split. In total, there are 19 variables the models will be using in determining "price". 
+```{r}
+set.seed(1609)
+MunichTree <- subset(MunichAirbnbClean, select=c("price", "neighbourhood", "room_type", "accommodates", "bathrooms", "bedrooms", "beds", "bed_type", "minimum_nights", "availability_365", "number_of_reviews", "Balcony", "AC", "Wifi", "Kitchen", "Family", "Washer", "Iron", "CoffeeMaker", "TwentyFourHrCheckIn"))
+
+splitIndex <- sample(nrow(MunichTree), size=(.7*nrow(MunichTree)), replace=F)
+MUCTrain <- MunichTree[ splitIndex,]
+MUCTest  <- MunichTree[-splitIndex,]
+dim(MUCTrain)
+dim(MUCTest)
+```
+
+### Decision Trees
+
+I first used a decision tree with cp = 0. As you can see, this is completely illegible, meaning the cp value needs to adjusted. 
+````{r}
+library(rpart)
+library(rpart.plot)
+set.seed(1609)
+
+MUCTree.1 <- rpart(MUCTrain$price~.,data=MUCTrain, method = "anova", control=rpart.control(cp=0,minsplit=15,xval=10))
+rpart.plot(MUCTree.1, box.palette="Green", shadow.col="gray", nn=TRUE)
+```
+
+Here is a print out of the cp and xerror values. The intention with this is to select the cp value with the lowest xerror. The graph gives us a sense of where this falls, which is somewhere around position 1-50. After looking closer at the list of values, we see xerror at position 10 is the lowest (0.97070), and cp = 2.2471e-03.
+```{r}
+printcp(MUCTree.1)
+plotcp(MUCTree.1,minline=TRUE)
+```
+
+Using the same training dataset, I ran another decision tree with the cp value from above as an input parameter. This tree is already much more legible, but I decided to print the cp and xerror values one more time. 
+
+```{r}
+library(rpart)
+library(rpart.plot)
+set.seed(1609)
+MUCTree.2 <- rpart(MUCTrain$price~.,data=MUCTrain, method = "anova", control=rpart.control(cp=.002247,minsplit=15,xval=10))
+rpart.plot(MUCTree.2, box.palette="Green", shadow.col="gray", nn=TRUE)
+```
+
+Based on these printouts, I selected xerror at position 3 that has the lowest value of 0.97072, and cp = 0.0046479.
+
+```{r}
+printcp(MUCTree.2)
+plotcp(MUCTree.2,minline=TRUE)
+```
+
+Here is my final pruned decision tree on the training dataset. I also printed the RMSE value, which is 100.67. 
+
+```{r}
+library(rpart)
+library(rpart.plot)
+set.seed(1609)
+MUCTree.3 <- rpart(MUCTrain$price~.,data=MUCTrain, method = "anova", control=rpart.control(cp=0.0046479,minsplit=15,xval=10))
+rpart.plot(MUCTree.3, box.palette="Green", shadow.col="gray", nn=TRUE)
+```
+
+```{r}
+rpart_train_predict <- predict(MUCTree.3,MUCTrain,type = "vector" )
+#calculate RMS error
+rmsetrain <- sqrt(mean((rpart_train_predict-MUCTrain$price)^2))
+rmsetrain
+```
+
+I used the same input parameters to print decision tree using the test dataset. The tree is slightly bigger, but the RMSE is not far off from the pruned tree, meaning the model did not overfit the data. 
+
+````{r}
+library(rpart)
+library(rpart.plot)
+set.seed(1609)
+MUCTree.3test <- rpart(MUCTest$price~.,data=MUCTest, method = "anova", control=rpart.control(cp=0.0046479,minsplit=15,xval=10))
+rpart.plot(MUCTree.3test, box.palette="Green", shadow.col="gray", nn=TRUE, yesno = 2, cex = 0.5)
+```
+
+```{r}
+rpart_test_predict <- predict(MUCTree.3test,MUCTest,type = "vector" )
+#calculate RMS error
+rmsetest <- sqrt(mean((rpart_test_predict-MUCTest$price)^2))
+rmsetest
+```
+
+### Random Forest
+
+The random forest model should give a better idea of which variables lead to a higher importance when determining "price". I began with a model that has no input parameters and used the training dataset. 
+
+Te resulting RMSE values for the training and test datasets were 99.67 and 100.82 respectively. These could be improved by selecting a better mtry value. 
+
+```{r}
+set.seed(1609)
+#install.packages("randomforest")
+library(randomForest)
+#install.packages("ranger")
+library(ranger)
+MUCrf <- randomForest(formula=price~.,data=MUCTrain, importance = TRUE)
+MUCrf
+
+rmseMUCTrain <- sqrt(MUCrf$mse[length(MUCrf$mse)])
+MUCp1<-predict(MUCrf,MUCTest)
+rmseMUCTest <- sqrt(mean((MUCp1-MUCTest$price)^2))
+rmseMUCTrain
+rmseMUCTest
+```
+
+The tuneRF function aims to find a better mtry value to be input. Based on the graph, I selected the mtry value with the lowest associated OOB error, mtry = 13.  
+
+```{r}
+features <- setdiff(names(MUCTrain), "Price")
+
+x <- MUCTrain[features]
+y <- MUCTrain$price
+set.seed(1609)
+MUCbestmtry <- tuneRF(x, y, stepFactor=1.5, improve=1e-5, ntree=500)
+print(MUCbestmtry)
+```
+
+I plugged mtry = 13 into my second random forest model. Here, I achieved RMSE values of 100.78 and 101.69 with respect to the training and test datasets. Once again, I am unsure of the value in these RMSEs, but they are at least close together, meaning the model is not overfit. 
+
+```{r}
+MUCrf2 <- randomForest(formula=price~.,data=MUCTrain, importance = TRUE, mtry = 13)
+MUCrf2
+plot(MUCrf2)
+MUCrf2$mse[length(MUCrf2$mse)]
+rmse2MUCTrain <- sqrt(MUCrf2$mse[length(MUCrf2$mse)])
+
+MUCp2<-predict(MUCrf2,MUCTest)
+rmse2MUCTest <- sqrt(mean((MUCp2-MUCTest$price)^2))
+rmse2MUCTrain
+rmse2MUCTest
+```
+
+Lastly, I created a ranger model using mtry = 13 and setting importance to "permutation" to be able to print the importance of the independent variables. This was only run on the training dataset, where the RMSE came to be 100.98. 
+
+```{r}
+MUCRanger <- ranger(
+    formula         = price ~ ., 
+    data            = MUCTrain, 
+    num.trees       = 500,
+    mtry            = 13,
+    importance      = 'permutation'
+  )
+importance(MUCRanger)
+RMSE_MUCRanger <- sqrt(MUCRanger$prediction.error)
+RMSE_MUCRanger
+```
+
+Lastly, the ranger model is able to print a visualization of the importance of the independent variables. We can see the number of reviews is the most important with accommodates (number of guests) next, followed by avability with 365 days. 
+
+```{r}
+#install.packages("broom.mixed")
+library(broom.mixed)
+library(dplyr)
+MUCRanger$variable.importance %>% 
+  tidy() %>%
+  dplyr::arrange(desc(x)) %>%
+  dplyr::top_n(15) %>%
+  ggplot(aes(reorder(names, x), x)) +
+  geom_col() +
+  coord_flip() +
+  ggtitle("Top 15 Most Important Variables")
+```
