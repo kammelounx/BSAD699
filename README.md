@@ -28,3 +28,10 @@ MunichAirbnbClean$Balcony <- as.factor(MunichAirbnbClean$Balcony)
 
 #### These two steps were done for each amenity, which then allowed my analysis to run much more smoothly. 
 
+## The Analysis
+
+#### My actual analysis used decision trees, random forests, and ranger, a faster implementation of random forest. All the code will be posted to the repository along with an annotated R Markdown. 
+
+#### I also created an interactive Tableau story that allows users to filter through different neighbourhoods, amenities, and room types to compare prices. The link for that is https://public.tableau.com/views/MunichAirbnbs/Story1?:language=en&:display_count=y&publish=yes&:origin=viz_share_link
+
+#### Enjoy!
